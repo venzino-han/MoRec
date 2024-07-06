@@ -23,14 +23,13 @@ from torch.nn.init import xavier_normal_
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
-def train(args, use_modal, local_rank):
+def train(args, use_modal, device=0):
     if use_modal:
         if 'roberta' in args.bert_model_load:
             Log_file.info('load roberta model...')
-            bert_model_load = '../pretrained_models/' + args.bert_model_load
-            tokenizer = RobertaTokenizer.from_pretrained(bert_model_load)
-            config = RobertaConfig.from_pretrained(bert_model_load, output_hidden_states=True)
-            bert_model = RobertaModel.from_pretrained(bert_model_load, config=config)
+            tokenizer = RobertaTokenizer.from_pretrained(args.bert_model_load)
+            config = RobertaConfig.from_pretrained(args.bert_model_load, output_hidden_states=True)
+            bert_model = RobertaModel.from_pretrained(args.bert_model_load, config=config)
             if 'base' in args.bert_model_load:
                 pooler_para = [197, 198]
                 args.word_embedding_dim = 768
@@ -39,17 +38,15 @@ def train(args, use_modal, local_rank):
                 args.word_embedding_dim = 1024
         elif 'opt' in args.bert_model_load:
             Log_file.info('load opt model...')
-            bert_model_load = '../pretrained_models/' + args.bert_model_load
-            tokenizer = GPT2Tokenizer.from_pretrained(bert_model_load)
-            config = OPTConfig.from_pretrained(bert_model_load, output_hidden_states=True)
-            bert_model = OPTModel.from_pretrained(bert_model_load, config=config)
+            tokenizer = GPT2Tokenizer.from_pretrained(args.bert_model_load)
+            config = OPTConfig.from_pretrained(args.bert_model_load, output_hidden_states=True)
+            bert_model = OPTModel.from_pretrained(args.bert_model_load, config=config)
             pooler_para = []
         else:
             Log_file.info('load bert model...')
-            bert_model_load = '../pretrained_models/' + args.bert_model_load
-            tokenizer = BertTokenizer.from_pretrained(bert_model_load)
-            config = BertConfig.from_pretrained(bert_model_load, output_hidden_states=True)
-            bert_model = BertModel.from_pretrained(bert_model_load, config=config)
+            tokenizer = BertTokenizer.from_pretrained(args.bert_model_load)
+            config = BertConfig.from_pretrained(args.bert_model_load, output_hidden_states=True)
+            bert_model = BertModel.from_pretrained(args.bert_model_load, config=config)
 
             if 'tiny' in args.bert_model_load:
                 pooler_para = [37, 38]
@@ -109,22 +106,23 @@ def train(args, use_modal, local_rank):
     Log_file.info('build dataset...')
     train_dataset = BuildTrainDataset(u2seq=users_train, item_content=item_content, item_num=item_num,
                                       max_seq_len=args.max_seq_len, use_modal=use_modal)
-    Log_file.info('build DDP sampler...')
-    train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+    # Log_file.info('build DDP sampler...')
+    # train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
 
-    def worker_init_reset_seed(worker_id):
-        initial_seed = torch.initial_seed() % 2 ** 31
-        worker_seed = initial_seed + worker_id + dist.get_rank()
-        random.seed(worker_seed)
-        np.random.seed(worker_seed)
+    # def worker_init_reset_seed(worker_id):
+    #     initial_seed = torch.initial_seed() % 2 ** 31
+    #     worker_seed = initial_seed + worker_id + dist.get_rank()
+    #     random.seed(worker_seed)
+    #     np.random.seed(worker_seed)
 
     Log_file.info('build dataloader...')
     train_dl = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.num_workers,
-                          worker_init_fn=worker_init_reset_seed, pin_memory=True, sampler=train_sampler)
+                        #   worker_init_fn=worker_init_reset_seed, 
+                          pin_memory=True)
 
     Log_file.info('build model...')
-    model = Model(args, item_num,  use_modal, bert_model).to(local_rank)
-    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).to(local_rank)
+    model = Model(args, item_num,  use_modal, bert_model).to(device)
+    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).to(device)
 
     if 'None' not in args.load_ckpt_name:
         Log_file.info('load ckpt if not None...')
@@ -143,12 +141,12 @@ def train(args, use_modal, local_rank):
         start_epoch = 0
         is_early_stop = True
 
-    model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
+    # model = DDP(model, device_ids=[device], output_device=device, find_unused_parameters=True)
 
     if use_modal:
         bert_params = []
         recsys_params = []
-        for index, (name, param) in enumerate(model.module.named_parameters()):
+        for index, (name, param) in enumerate(model.named_parameters()):
             if param.requires_grad:
                 if 'bert_model' in name:
                     bert_params.append(param)
@@ -160,8 +158,8 @@ def train(args, use_modal, local_rank):
         ])
 
         Log_file.info("***** {} parameters in bert, {} parameters in model *****".format(
-            len(list(model.module.bert_encoder.text_encoders.title.bert_model.parameters())),
-            len(list(model.module.parameters()))))
+            len(list(model.bert_encoder.text_encoders.title.bert_model.parameters())),
+            len(list(model.parameters()))))
 
         for children_model in optimizer.state_dict()['param_groups']:
             Log_file.info("***** {} parameters have learning rate {}, weight_decay {} *****".format(
@@ -171,7 +169,7 @@ def train(args, use_modal, local_rank):
         model_params_freeze = []
         bert_params_require_grad = []
         bert_params_freeze = []
-        for param_name, param_tensor in model.module.named_parameters():
+        for param_name, param_tensor in model.named_parameters():
             if param_tensor.requires_grad:
                 model_params_require_grad.append(param_name)
                 if 'bert_model' in param_name:
@@ -186,7 +184,7 @@ def train(args, use_modal, local_rank):
         Log_file.info("***** bert: {} parameters require grad, {} parameters freeze *****".format(
             len(bert_params_require_grad), len(bert_params_freeze)))
     else:
-        optimizer = optim.AdamW(model.module.parameters(), lr=args.lr, weight_decay=args.l2_weight)
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.l2_weight)
 
     if 'None' not in args.load_ckpt_name:
         optimizer.load_state_dict(checkpoint["optimizer"])
@@ -218,11 +216,11 @@ def train(args, use_modal, local_rank):
         Log_file.info('')
         loss, batch_index, need_break = 0.0, 1, False
         model.train()
-        train_dl.sampler.set_epoch(now_epoch)
+        # train_dl.sampler.set_epoch(now_epoch)
 
         for data in train_dl:
             sample_items, log_mask = data
-            sample_items, log_mask = sample_items.to(local_rank), log_mask.to(local_rank)
+            sample_items, log_mask = sample_items.to(device), log_mask.to(device)
             if use_modal:
                 sample_items = sample_items.view(-1, sample_items.size(-1))
             else:
@@ -230,7 +228,7 @@ def train(args, use_modal, local_rank):
 
             optimizer.zero_grad()
             with torch.cuda.amp.autocast():
-                bz_loss = model(sample_items, log_mask, local_rank)
+                bz_loss = model(sample_items, log_mask, device)
                 loss += bz_loss.data.float()
             scaler.scale(bz_loss).backward()
             scaler.step(optimizer)
@@ -250,7 +248,7 @@ def train(args, use_modal, local_rank):
             max_eval_value, max_epoch, early_stop_epoch, early_stop_count, need_break, need_save = \
                 run_eval(now_epoch, max_epoch, early_stop_epoch, max_eval_value, early_stop_count,
                          model, item_content, users_history_for_valid, users_valid, 512, item_num, use_modal,
-                         args.mode, is_early_stop, local_rank)
+                         args.mode, is_early_stop, device)
             model.train()
             if need_save and dist.get_rank() == 0:
                 save_model(now_epoch, model, model_dir, optimizer,
@@ -273,12 +271,12 @@ def train(args, use_modal, local_rank):
 
 def run_eval(now_epoch, max_epoch, early_stop_epoch, max_eval_value, early_stop_count,
              model, item_content, user_history, users_eval, batch_size, item_num, use_modal,
-             mode, is_early_stop, local_rank):
+             mode, is_early_stop, device):
     eval_start_time = time.time()
     Log_file.info('Validating...')
-    item_embeddings = get_item_embeddings(model, item_content, batch_size, args, use_modal, local_rank)
+    item_embeddings = get_item_embeddings(model, item_content, batch_size, args, use_modal, device)
     valid_Hit10 = eval_model(model, user_history, users_eval, item_embeddings, batch_size, args,
-                             item_num, Log_file, mode, local_rank)
+                             item_num, Log_file, mode, device)
     report_time_eval(eval_start_time, Log_file)
     Log_file.info('')
     need_break = False
@@ -309,9 +307,9 @@ def setup_seed(seed):
 
 if __name__ == "__main__":
     args = parse_args()
-    local_rank = args.local_rank
-    torch.cuda.set_device(local_rank)
-    dist.init_process_group(backend='nccl')
+    device = args.device
+    torch.cuda.set_device(device)
+    # dist.init_process_group(backend='nccl')
     setup_seed(12345)
     gpus = torch.cuda.device_count()
 
@@ -335,14 +333,14 @@ if __name__ == "__main__":
     time_run = time.strftime('-%Y%m%d-%H%M%S', time.localtime())
     args.label_screen = args.label_screen + time_run
 
-    Log_file, Log_screen = setuplogger(dir_label, log_paras, time_run, args.mode, dist.get_rank(), args.behaviors)
+    Log_file, Log_screen = setuplogger(dir_label, log_paras, time_run, args.mode, 0, args.behaviors)
     Log_file.info(args)
     if not os.path.exists(model_dir):
         Path(model_dir).mkdir(parents=True, exist_ok=True)
 
     start_time = time.time()
     if 'train' in args.mode:
-        train(args, is_use_modal, local_rank)
+        train(args, is_use_modal)
     end_time = time.time()
     hour, minu, secon = get_time(start_time, end_time)
     Log_file.info("##### (time) all: {} hours {} minutes {} seconds #####".format(hour, minu, secon))

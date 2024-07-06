@@ -8,7 +8,7 @@ news = 'mind_60w_items.tsv'
 logging_num = 4
 testing_num = 1
 
-bert_model_load = 'bert_base_uncased'
+bert_model_load = 'bert-base-uncased'
 freeze_paras_before = 0
 news_attributes = 'title'
 
@@ -21,8 +21,11 @@ load_ckpt_name = 'None'
 
 l2_weight_list = [0.01]
 drop_rate_list = [0.1]
-batch_size_list = [32]
-lr_list_ct = [(1e-4, 5e-5), (5e-5, 5e-5)]
+batch_size_list = [16]
+lr_list_ct = [
+    # (1e-4, 5e-5), 
+    (5e-5, 5e-5)
+    ]
 embedding_dim_list = [512]
 
 
@@ -36,8 +39,8 @@ for l2_weight in l2_weight_list:
                     label_screen = '{}_bs{}_ed{}_lr{}_dp{}_L2{}_Flr{}'.format(
                         item_tower, batch_size, embedding_dim, lr,
                         drop_rate, l2_weight, fine_tune_lr)
-                    run_py = "CUDA_VISIBLE_DEVICES='0,1' \
-                             /opt/anaconda3/bin/python  -m torch.distributed.launch --nproc_per_node 2 --master_port 1234\
+                    run_py = "CUDA_VISIBLE_DEVICES='0' \
+                             python3 \
                              run.py --root_data_dir {}  --dataset {} --behaviors {} --news {}\
                              --mode {} --item_tower {} --load_ckpt_name {} --label_screen {} --logging_num {} --testing_num {}\
                              --l2_weight {} --drop_rate {} --batch_size {} --lr {} --embedding_dim {} \

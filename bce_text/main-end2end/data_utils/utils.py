@@ -4,7 +4,7 @@ import torch
 import argparse
 import time
 import math
-import torch.distributed as dist
+# import torch.distributed as dist
 
 
 def str2bool(v):
@@ -88,7 +88,7 @@ def para_and_log(model, seq_num, batch_size, Log_file, logging_num, testing_num)
     Log_file.info("##### total_num {} #####".format(total_num))
     Log_file.info("##### trainable_num {} #####".format(trainable_num))
 
-    step_num = math.ceil(seq_num / dist.get_world_size() / batch_size)
+    step_num = math.ceil(seq_num / batch_size)
     Log_file.info("##### all {} steps #####".format(step_num))
     steps_for_log = int(step_num / logging_num)
     steps_for_test = int(step_num / testing_num)
