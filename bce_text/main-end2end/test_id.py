@@ -16,7 +16,7 @@ mode = 'test'
 item_tower = 'id'
 
 epoch = 0
-load_ckpt_name = 'epoch-82.pt'
+load_ckpt_name = 'epoch-36.pt'
 
 
 l2_weight_list = [0.1]
@@ -37,7 +37,7 @@ for l2_weight in l2_weight_list:
                         item_tower, batch_size, embedding_dim, lr,
                         drop_rate, l2_weight, fine_tune_lr)
                     run_py = "CUDA_VISIBLE_DEVICES='0' \
-                             /opt/anaconda3/bin/python  -m torch.distributed.launch --nproc_per_node 1 --master_port 1234\
+                             python3 \
                              run_test.py --root_data_dir {}  --dataset {} --behaviors {} --news {}\
                              --mode {} --item_tower {} --load_ckpt_name {} --label_screen {} --logging_num {} --testing_num {}\
                              --l2_weight {} --drop_rate {} --batch_size {} --lr {} --embedding_dim {} \

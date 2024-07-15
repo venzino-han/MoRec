@@ -89,7 +89,7 @@ def test(args, use_modal, local_rank):
     Log_file.info('model.cuda()...')
     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
-    total_num = sum(p.numel() for p in model.module.parameters())
+    total_num = sum(p.numel() for p in model.parameters())
     Log_file.info("##### total_num {} #####".format(total_num))
 
     run_eval_test(model, item_id_to_keys, args.lmdb_data, users_history_for_test, users_test, 256, item_num,

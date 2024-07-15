@@ -78,20 +78,20 @@ class BuildEvalDataset(Dataset):
 
 class SequentialDistributedSampler(torch.utils.data.sampler.Sampler):
     def __init__(self, dataset, batch_size, rank=None, num_replicas=None):
-        if num_replicas is None:
-            if not torch.distributed.is_available():
-                raise RuntimeError("Requires distributed package to be available")
-            num_replicas = torch.distributed.get_world_size()
-        if rank is None:
-            if not torch.distributed.is_available():
-                raise RuntimeError("Requires distributed package to be available")
-            rank = torch.distributed.get_rank()
+        # if num_replicas is None:
+        #     if not torch.distributed.is_available():
+        #         raise RuntimeError("Requires distributed package to be available")
+        #     num_replicas = torch.distributed.get_world_size()
+        # if rank is None:
+        #     if not torch.distributed.is_available():
+        #         raise RuntimeError("Requires distributed package to be available")
+        #     rank = torch.distributed.get_rank()
         self.dataset = dataset
-        self.num_replicas = num_replicas
+        # self.num_replicas = num_replicas
         self.rank = rank
         self.batch_size = batch_size
-        self.num_samples = int(math.ceil(len(self.dataset) * 1.0 / self.batch_size / self.num_replicas)) * self.batch_size
-        self.total_size = self.num_samples * self.num_replicas
+        self.num_samples = int(math.ceil(len(self.dataset) * 1.0 / self.batch_size )) * self.batch_size
+        self.total_size = self.num_samples #* self.num_replicas
 
     def __iter__(self):
         indices = list(range(len(self.dataset)))

@@ -85,8 +85,8 @@ def get_time(start_time, end_time):
 
 
 def para_and_log(model, seq_num, batch_size, Log_file, logging_num, testing_num):
-    total_num = sum(p.numel() for p in model.module.parameters())
-    trainable_num = sum(p.numel() for p in model.module.parameters() if p.requires_grad)
+    total_num = sum(p.numel() for p in model.parameters())
+    trainable_num = sum(p.numel() for p in model.parameters() if p.requires_grad)
     Log_file.info("##### total_num {} #####".format(total_num))
     Log_file.info("##### trainable_num {} #####".format(trainable_num))
 
@@ -101,7 +101,7 @@ def para_and_log(model, seq_num, batch_size, Log_file, logging_num, testing_num)
 
 def save_model(now_epoch, model, model_dir, optimizer, rng_state, cuda_rng_state, Log_file):
     ckpt_path = os.path.join(model_dir, f'epoch-{now_epoch}.pt')
-    torch.save({'model_state_dict': model.module.state_dict(),
+    torch.save({'model_state_dict': model.state_dict(),
                 'optimizer': optimizer.state_dict(),
                 'rng_state': rng_state,
                 'cuda_rng_state': cuda_rng_state}, ckpt_path)

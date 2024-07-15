@@ -66,8 +66,8 @@ def get_user_embeddings(model, user_num, test_batch_size, args, local_rank):
     with torch.no_grad():
         for input_ids in user_dataloader:
             input_ids = input_ids.to(local_rank)
-            user_emb = model.module.user_embedding(input_ids)
-            user_feature = model.module.user_encoder(user_emb)
+            user_emb = model.user_embedding(input_ids)
+            user_feature = model.user_encoder(user_emb)
             user_embeddings.extend(user_feature)
     return torch.stack(tensors=user_embeddings, dim=0).to(torch.device("cpu")).detach()
 
@@ -82,10 +82,10 @@ def get_item_embeddings(model, item_content, test_batch_size, args, use_modal, l
         for input_ids in item_dataloader:
             input_ids = input_ids.to(local_rank)
             if use_modal:
-                item_feature = model.module.bert_encoder(input_ids)
+                item_feature = model.bert_encoder(input_ids)
             else:
-                item_emb = model.module.id_embedding(input_ids)
-                item_feature = model.module.id_encoder(item_emb)
+                item_emb = model.id_embedding(input_ids)
+                item_feature = model.id_encoder(item_emb)
             item_embeddings.extend(item_feature)
     return torch.stack(tensors=item_embeddings, dim=0).detach()
 

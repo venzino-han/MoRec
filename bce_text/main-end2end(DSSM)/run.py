@@ -139,7 +139,7 @@ def train(args, use_modal, local_rank):
     if use_modal:
         bert_params = []
         recsys_params = []
-        for index, (name, param) in enumerate(model.module.named_parameters()):
+        for index, (name, param) in enumerate(model.named_parameters()):
             if param.requires_grad:
                 if 'bert_model' in name:
                     bert_params.append(param)
@@ -151,8 +151,8 @@ def train(args, use_modal, local_rank):
         ])
 
         Log_file.info("***** {} parameters in bert, {} parameters in model *****".format(
-            len(list(model.module.bert_encoder.text_encoders.title.bert_model.parameters())),
-            len(list(model.module.parameters()))))
+            len(list(model.bert_encoder.text_encoders.title.bert_model.parameters())),
+            len(list(model.parameters()))))
 
         for children_model in optimizer.state_dict()['param_groups']:
             Log_file.info("***** {} parameters have learning rate {}, weight_decay {} *****".format(
@@ -162,7 +162,7 @@ def train(args, use_modal, local_rank):
         model_params_freeze = []
         bert_params_require_grad = []
         bert_params_freeze = []
-        for param_name, param_tensor in model.module.named_parameters():
+        for param_name, param_tensor in model.named_parameters():
             if param_tensor.requires_grad:
                 model_params_require_grad.append(param_name)
                 if 'bert_model' in param_name:
@@ -177,7 +177,7 @@ def train(args, use_modal, local_rank):
         Log_file.info("***** bert: {} parameters require grad, {} parameters freeze *****".format(
             len(bert_params_require_grad), len(bert_params_freeze)))
     else:
-        optimizer = optim.AdamW(model.module.parameters(), lr=args.lr, weight_decay=args.l2_weight)
+        optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.l2_weight)
 
     if 'None' not in args.load_ckpt_name:
         optimizer.load_state_dict(checkpoint["optimizer"])

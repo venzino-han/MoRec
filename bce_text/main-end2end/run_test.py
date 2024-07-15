@@ -23,7 +23,7 @@ from torch.nn.init import xavier_normal_
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
-def test(args, use_modal, local_rank):
+def test(args, use_modal, device):
     if use_modal:
         if 'roberta' in args.bert_model_load:
             Log_file.info('load roberta model...')
@@ -46,7 +46,7 @@ def test(args, use_modal, local_rank):
             pooler_para = []
         else:
             Log_file.info('load bert model...')
-            bert_model_load = '../../pretrained_models/' + args.bert_model_load
+            bert_model_load = args.bert_model_load
             tokenizer = BertTokenizer.from_pretrained(bert_model_load)
             config = BertConfig.from_pretrained(bert_model_load, output_hidden_states=True)
             bert_model = BertModel.from_pretrained(bert_model_load, config=config)
@@ -107,13 +107,15 @@ def test(args, use_modal, local_rank):
         bert_model = None
 
     Log_file.info('build model...')
-    model = Model(args, item_num,  use_modal, bert_model).to(local_rank)
-    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).to(local_rank)
+    model = Model(args, item_num,  use_modal, bert_model).to(device)
+    model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).to(device)
 
     if 'None' not in args.load_ckpt_name:
         Log_file.info('load ckpt if not None...')
         ckpt_path = get_checkpoint(model_dir, args.load_ckpt_name)
-        checkpoint = torch.load(ckpt_path, map_location=torch.device('cpu'))
+        checkpoint = torch.load(ckpt_path,
+                                # map_location=torch.device('cpu')
+                                )
         Log_file.info('load checkpoint...')
         model.load_state_dict(checkpoint['model_state_dict'])
         Log_file.info(f"Model loaded from {ckpt_path}")
@@ -122,7 +124,7 @@ def test(args, use_modal, local_rank):
     else:
         Log_file.info('no ckpt')
 
-    model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
+    # model = DDP(model, device_ids=[device], output_device=device, find_unused_parameters=True)
 
     total_num = sum(p.numel() for p in model.parameters())
     trainable_num = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -133,15 +135,15 @@ def test(args, use_modal, local_rank):
 
     Log_file.info('Testing ...')
     run_eval_test(model, item_content, users_history_for_test, users_test, 512, item_num, use_modal,
-             args.mode, local_rank)
+             args.mode, device)
 
 
 def run_eval_test(model, item_content, user_history, users_eval, batch_size, item_num, use_modal,
-             mode, local_rank):
+             mode, device):
     eval_start_time = time.time()
-    item_embeddings = get_item_embeddings(model, item_content, batch_size, args, use_modal, local_rank)
+    item_embeddings = get_item_embeddings(model, item_content, batch_size, args, use_modal, device)
     eval_model(model, user_history, users_eval, item_embeddings, batch_size, args,
-                             item_num, Log_file, mode, local_rank)
+                             item_num, Log_file, mode, device)
     report_time_eval(eval_start_time, Log_file)
 
 
@@ -157,9 +159,9 @@ def setup_seed(seed):
 
 if __name__ == "__main__":
     args = parse_args()
-    local_rank = args.local_rank
-    torch.cuda.set_device(local_rank)
-    dist.init_process_group(backend='nccl')
+    device = args.device
+    torch.cuda.set_device(device)
+    # dist.init_process_group(backend='nccl')
     setup_seed(12345)
     gpus = torch.cuda.device_count()
 
@@ -184,14 +186,14 @@ if __name__ == "__main__":
     args.label_screen = args.label_screen + time_run
 
     Log_file, Log_screen = setuplogger('test', args.behaviors + ' ' + log_paras,
-                                       time_run, args.mode, dist.get_rank(), args.behaviors)
+                                       time_run, args.mode, 0, args.behaviors)
     Log_file.info(args)
     if not os.path.exists(model_dir):
         Path(model_dir).mkdir(parents=True, exist_ok=True)
 
     start_time = time.time()
     if 'test' in args.mode:
-        test(args, is_use_modal, local_rank)
+        test(args, is_use_modal, device)
     end_time = time.time()
     hour, minu, secon = get_time(start_time, end_time)
     Log_file.info("##### (time) all: {} hours {} minutes {} seconds #####".format(hour, minu, secon))

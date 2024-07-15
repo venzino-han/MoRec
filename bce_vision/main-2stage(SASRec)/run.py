@@ -112,14 +112,14 @@ def train(args, local_rank):
     Log_file.info('model.cuda()...')
     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
-    optimizer = optim.AdamW(model.module.parameters(), lr=args.lr, weight_decay=args.l2_weight)
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.l2_weight)
 
     if 'None' not in args.load_ckpt_name:
         optimizer.load_state_dict(checkpoint["optimizer"])
         Log_file.info(f"optimizer loaded from {ckpt_path}")
 
-    total_num = sum(p.numel() for p in model.module.parameters())
-    trainable_num = sum(p.numel() for p in model.module.parameters() if p.requires_grad)
+    total_num = sum(p.numel() for p in model.parameters())
+    trainable_num = sum(p.numel() for p in model.parameters() if p.requires_grad)
     Log_file.info("##### total_num {} #####".format(total_num))
     Log_file.info("##### trainable_num {} #####".format(trainable_num))
 

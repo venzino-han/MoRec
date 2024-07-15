@@ -167,7 +167,7 @@ def eval_model_special(model, item_embeddings, new_item_embeddings, test_batch_s
             user_ids, input_embs, log_mask, labels = \
                 user_ids.to(local_rank), input_embs.to(local_rank),\
                 log_mask.to(local_rank), labels.to(local_rank).detach()
-            prec_emb = model.module.user_encoder(input_embs, log_mask, local_rank)[:, -1].detach()
+            prec_emb = model.user_encoder(input_embs, log_mask, local_rank)[:, -1].detach()
             scores = torch.matmul(prec_emb, item_embeddings.t()).squeeze(dim=-1).detach()
             for user_id, label, score in zip(user_ids, labels, scores):
                 user_id = user_id[0].item()
@@ -199,7 +199,7 @@ def eval_model_special(model, item_embeddings, new_item_embeddings, test_batch_s
                 user_ids, input_embs, log_mask, labels, target_embeddings = \
                     user_ids.to(local_rank), input_embs.to(local_rank), \
                     log_mask.to(local_rank), labels.to(local_rank).detach(), target_embeddings.to(local_rank)
-                prec_emb = model.module.user_encoder(input_embs, log_mask, local_rank)[:, -1].detach()
+                prec_emb = model.user_encoder(input_embs, log_mask, local_rank)[:, -1].detach()
                 for user_id, label, user_prec_emb, target_emb in zip(user_ids, labels, prec_emb, target_embeddings):
                     item_emb = torch.cat((item_embeddings, target_emb.unsqueeze(0)), 0)
                     score = torch.matmul(user_prec_emb, item_emb.t()).squeeze(dim=-1).detach()

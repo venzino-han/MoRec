@@ -148,7 +148,7 @@ def train(args, use_modal, local_rank):
 
     model = DDP(model, device_ids=[local_rank], output_device=local_rank, find_unused_parameters=True)
 
-    optimizer = optim.AdamW(model.module.parameters(), lr=args.lr, weight_decay=args.l2_weight)
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.l2_weight)
 
     if 'None' not in args.load_ckpt_name:
         optimizer.load_state_dict(checkpoint["optimizer"])

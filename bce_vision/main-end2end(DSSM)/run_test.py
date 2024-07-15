@@ -95,8 +95,8 @@ def test(args, use_modal, local_rank):
 
     model = DDP(model, device_ids=[local_rank], output_device=local_rank)
 
-    total_num = sum(p.numel() for p in model.module.parameters())
-    trainable_num = sum(p.numel() for p in model.module.parameters() if p.requires_grad)
+    total_num = sum(p.numel() for p in model.parameters())
+    trainable_num = sum(p.numel() for p in model.parameters() if p.requires_grad)
     Log_file.info("##### total_num {} #####".format(total_num))
     Log_file.info("##### trainable_num {} #####".format(trainable_num))
 

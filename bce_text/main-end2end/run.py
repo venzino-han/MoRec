@@ -250,7 +250,7 @@ def train(args, use_modal, device=0):
                          model, item_content, users_history_for_valid, users_valid, 512, item_num, use_modal,
                          args.mode, is_early_stop, device)
             model.train()
-            if need_save and dist.get_rank() == 0:
+            if need_save :
                 save_model(now_epoch, model, model_dir, optimizer,
                            torch.get_rng_state(), torch.cuda.get_rng_state(), scaler, Log_file)
         Log_file.info('')

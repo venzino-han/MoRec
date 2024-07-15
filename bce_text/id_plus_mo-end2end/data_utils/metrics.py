@@ -76,7 +76,7 @@ def get_id_embeddings(model, item_content, test_batch_size, args, local_rank):
     with torch.no_grad():
         for input_ids in item_dataloader:
             input_ids = input_ids.to(local_rank)
-            item_emb = model.module.id_embedding(input_ids).to(torch.device("cpu")).detach()
+            item_emb = model.id_embedding(input_ids).to(torch.device("cpu")).detach()
             item_embeddings.extend(item_emb)
     return torch.stack(tensors=item_embeddings, dim=0)
 
@@ -90,9 +90,9 @@ def get_bert_embeddings(model, item_content, test_batch_size, args, local_rank):
     with torch.no_grad():
         for input_ids, input_contents in item_dataloader:
             input_ids, input_contents = input_ids.to(local_rank).squeeze(), input_contents.to(local_rank)
-            input_embs_id = model.module.id_embedding(input_ids)
-            input_embs_content = model.module.bert_encoder(input_contents)
-            input_embs_all = model.module.fc(input_embs_id, input_embs_content).to(torch.device("cpu")).detach()
+            input_embs_id = model.id_embedding(input_ids)
+            input_embs_content = model.bert_encoder(input_contents)
+            input_embs_all = model.fc(input_embs_id, input_embs_content).to(torch.device("cpu")).detach()
             item_embeddings.extend(input_embs_all)
     return torch.stack(tensors=item_embeddings, dim=0)
 
@@ -115,7 +115,7 @@ def eval_model(model, user_history, eval_seq, item_embeddings, test_batch_size, 
             user_ids, input_embs, log_mask, labels = \
                 user_ids.to(local_rank), input_embs.to(local_rank),\
                 log_mask.to(local_rank), labels.to(local_rank).detach()
-            prec_emb = model.module.user_encoder(input_embs, log_mask, local_rank)[:, -1].detach()
+            prec_emb = model.user_encoder(input_embs, log_mask, local_rank)[:, -1].detach()
             scores = torch.matmul(prec_emb, item_embeddings.t()).squeeze(dim=-1).detach()
             for user_id, label, score in zip(user_ids, labels, scores):
                 user_id = user_id[0].item()

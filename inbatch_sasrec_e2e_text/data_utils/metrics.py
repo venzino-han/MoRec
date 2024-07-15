@@ -67,9 +67,9 @@ def get_item_embeddings(model, item_content, test_batch_size, args, use_modal, l
         for input_ids in item_dataloader:
             input_ids = input_ids.to(local_rank)
             if use_modal:
-                item_emb = model.module.bert_encoder(input_ids)
+                item_emb = model.bert_encoder(input_ids)
             else:
-                item_emb = model.module.id_embedding(input_ids)
+                item_emb = model.id_embedding(input_ids)
             item_embeddings.extend(item_emb)
     return torch.stack(tensors=item_embeddings, dim=0).to(torch.device("cpu")).detach()
 
@@ -92,7 +92,7 @@ def eval_model(model, user_history, eval_seq, item_embeddings, test_batch_size, 
             user_ids, input_embs, log_mask, labels = \
                 user_ids.to(local_rank), input_embs.to(local_rank),\
                 log_mask.to(local_rank), labels.to(local_rank).detach()
-            prec_emb = model.module.user_encoder(input_embs, log_mask, local_rank)[:, -1].detach()
+            prec_emb = model.user_encoder(input_embs, log_mask, local_rank)[:, -1].detach()
             scores = torch.matmul(prec_emb, item_embeddings.t()).squeeze(dim=-1).detach()
             for user_id, label, score in zip(user_ids, labels, scores):
                 user_id = user_id[0].item()
